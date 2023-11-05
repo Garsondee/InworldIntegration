@@ -1,20 +1,20 @@
 {
-  "id": "module",
-  "title": "New Module",
-  "description": "",
+  "id": "InworldIntegration",
+  "title": "Inworld AI Module",
+  "description": "This module is designed to interface with the Inworld API and bring it into Foundry",
   "version": "#{VERSION}#",
   "library": "false",
   "manifestPlusVersion": "1.2.0",
   "compatibility": {
-    "minimum": 10,
-    "verified": 10,
+    "minimum": 11,
+    "verified": 11,
     "maximum": 11
   },
   "authors": [
     {
-      "name": "The League of Extraordinary FVTT Developers",
-      "url": "https://github.com/League-of-Foundry-Developers",
-      "discord": "discordID#0001"
+      "name": "Garsondee",
+      "url": "",
+      "discord": ""
     }
   ],
   "relationships": {
