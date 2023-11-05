@@ -15,7 +15,7 @@ Inspired by Vex Florez's Elevenlabs module (licensed under GPL), which provided 
 - Sends text messages to Inworld and receives responses.
 - Broadcasts received messages in the chat and using speech bubbles.
 - Utilizes Elevenlabs API for text-to-speech functionality, enabling characters to "speak" the text messages.
-- Provides a settings interface for users to configure their API keys and other preferences.
+- Provides a settings interface for users to configure their API keys and other preferences.  
 
 -------------------------------------
       Pre-requisites
