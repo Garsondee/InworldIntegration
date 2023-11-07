@@ -1,6 +1,6 @@
 {
   "id": "inworldintegration",
-  "title": "Inworld AI Module",
+  "title": "Inworld AI Chatbot Integration Module",
   "description": "This module allows you to use Inworld - an AI NPC chat bot capability - within Foundry, including access to Elevenlabs Text-To-Speech functionality for optional voiced lines of dialogue.",
   "version": "#{VERSION}#",
   "library": "false",
