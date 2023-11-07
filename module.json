@@ -4,7 +4,7 @@
   "description": "This module is designed to interface with the Inworld API and bring it into Foundry",
   "version": "#{VERSION}#",
   "library": "false",
-  "manifestPlusVersion": "1.2.0",
+  "manifestPlusVersion": "1.5.0",
   "compatibility": {
     "minimum": 11,
     "verified": 11,

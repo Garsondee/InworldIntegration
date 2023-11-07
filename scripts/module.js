@@ -11,21 +11,9 @@ class InworldIntegration {
     }
 
     registerSettings() {
-        game.settings.register("elevenlabs-for-foundry", "xi-api-key", {
-            name: "API-Key",
-            hint: "Your Elevenlabs API Key",
-            scope: "client",
-            config: true,
-            type: String,
-            onChange: value => {
-                Initialize_Main()
-            }
-        });
-        Initialize_Main();
-
         game.settings.register('InworldIntegration', 'workspaceId', {
             name: 'Workspace ID',
-            hint: 'Enter the Workspace ID',
+            hint: 'Enter the Workspace ID - You can find that here: https://studio.inworld.ai/workspaces',
             scope: 'world',
             config: true,
             type: String,
@@ -33,8 +21,8 @@ class InworldIntegration {
         });
 
         game.settings.register('InworldIntegration', 'apiKey', {
-            name: 'API Key',
-            hint: 'Enter your API key',
+            name: 'Inworld API Key',
+            hint: 'Enter your API key - you can find this in the integration button on the left and you can use the "Copy Base64 Button" to grab the key.',
             scope: 'world',
             config: true,
             type: String,
@@ -43,7 +31,7 @@ class InworldIntegration {
 
         game.settings.register('InworldIntegration', 'endUserId', {
             name: 'End User ID',
-            hint: 'Enter the End User ID',
+            hint: 'Enter the End User ID - Does not do anything currently.',
             scope: 'world',
             config: true,
             type: String,
@@ -52,7 +40,7 @@ class InworldIntegration {
 
         game.settings.register('InworldIntegration', 'givenName', {
             name: 'Given Name',
-            hint: 'Enter the Given Name',
+            hint: 'Enter the name of the character who will be interacting with the AI',
             scope: 'world',
             config: true,
             type: String,
@@ -61,13 +49,35 @@ class InworldIntegration {
 
         game.settings.register('InworldIntegration', 'activeCharacter', {
             name: 'Active Character',
-            hint: 'Enter the name of the active character',
+            hint: 'Enter the name of the character within Inworld - lowercase letters only - be aware that if you change the name of the character later it currently stays with the old name for this purpose.',
             scope: 'world',
             config: true,
             type: String,
             default: 'susan',
         });
+
+        game.settings.register("InworldIntegration", "xi-api-key", {
+            name: "Elevenlabs API-Key (optional)",
+            hint: "Your Elevenlabs API Key",
+            scope: "world",
+            config: true,
+            type: String,
+            onChange: value => {
+                Initialize_Main()
+            }
+        });
+        Initialize_Main();
+
+        game.settings.register('InworldIntegration', 'elevenlabsVoice', {
+            name: 'Elevenlabs Voice (optional)',
+            hint: 'Enter the voice ID for Elevenlabs to be used',
+            scope: 'world',
+            config: true,
+            type: String,
+            default: 'Roshni', // Set the default voice to Roshni
+        });
     }
+
 
     async onReady() {
         const activeCharacter = game.settings.get('InworldIntegration', 'activeCharacter');
@@ -76,6 +86,59 @@ class InworldIntegration {
         this.character_id = this.sessionData.sessionCharacters[0].character;
         await this.listTokenNames();
         await this.compareNames(this.sessionData);
+
+        game.settings.register('InworldIntegration', 'elevenlabsVoice', {
+            name: 'Elevenlabs Voice',
+            hint: 'Select the voice for Elevenlabs to be used',
+            scope: 'world',
+            config: true,
+            type: String,
+            default: '',
+            choices: {}, // This will be populated dynamically
+            onChange: value => {
+                // Handle the change if needed
+            }
+        });
+
+        async function populateVoiceDropdown() {
+            console.log("Fetching voices...");
+            const voices = await Get_Voices(); // Make sure this function returns the list of voices
+
+            if (!voices || voices.length === 0) {
+                console.error('No voices were returned from the Get_Voices function.');
+                return; // Exit the function if no voices are available
+            }
+
+            const voiceChoices = {};
+            voices.forEach(voice => {
+                voiceChoices[voice.voice_id] = voice.name; // Map voice_id to voice name
+            });
+
+            console.log("Voice choices to populate:", voiceChoices);
+
+            // Update the choices for the setting
+            game.settings.register('InworldIntegration', 'elevenlabsVoice', {
+                name: 'Elevenlabs Voice',
+                hint: 'Select the voice for Elevenlabs to be used',
+                scope: 'world',
+                config: true,
+                type: String,
+                default: '',
+                choices: voiceChoices, // Populate the choices with the fetched voices
+                onChange: value => {
+                    // Handle the change if needed, for example:
+                    console.log(`Voice selection changed to: ${value}`);
+                }
+            });
+
+            // Refresh the settings menu to show the new choices
+            if (game.settings.sheet) {
+                game.settings.sheet.render(true);
+                console.log("Settings sheet rendered with new choices.");
+            }
+        }
+
+        await populateVoiceDropdown(); // Make sure to await this function
     }
 
     async compareNames(sessionData) {
@@ -99,6 +162,8 @@ class InworldIntegration {
             }
         }
     }
+
+
 
     async listTokenNames() {
         if (!canvas || !canvas.ready) {
@@ -170,12 +235,19 @@ class InworldIntegration {
             const data = await response.json();
             console.log("Integrate Inworld API Module: ", data);
 
+            // Concatenate the messages into a single string separated by spaces
+            // Change starts here
+            const concatenatedMessages = data.textList.join(" "); // Join messages with space
+
+            // Assuming we have only one inworld character per session for simplicity
             for (let inworldCharacter of sessionData.sessionCharacters) {
                 let token = this.characterTokenMap[inworldCharacter.character];
                 if (token) {
-                    this.broadcastMessages(token, data.textList);
+                    // Modified broadcastMessages to handle a single concatenated string
+                    this.broadcastMessages(token, [concatenatedMessages]);
                 }
             }
+            // Change ends here
         } catch (error) {
             console.error('Error:', error);
         }
@@ -204,11 +276,28 @@ class InworldIntegration {
         });
     }
 
-    async textToSpeech(text, voiceID = "21m00Tcm4TlvDq8ikWAM") {  // Default voiceID is set to the example voice ID from the docs
+    async textToSpeech(text) {
+        // Retrieve the selected voice ID directly from settings
+        let voiceID = game.settings.get('InworldIntegration', 'elevenlabsVoice');
+
+        // Check if the selected voice ID is in the list of voices
+        if (all_Voices && all_Voices.voices) {
+            const voiceData = all_Voices.voices.find(voice => voice.voice_id === voiceID);
+            if (!voiceData) {
+                console.error(`Voice ID ${voiceID} not found in the stored voices list.`);
+                return;
+            }
+        } else {
+            console.error('Voices list is not loaded. Make sure to run Get_Voices() first.');
+            return;
+        }
+
+        // Now voiceID is set to the ID from the settings, or the error is logged if not found
+        // Continue with the existing functionality to perform text-to-speech
         const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceID}`;
         const headers = {
             'accept': 'audio/mpeg',
-            'xi-api-key': game.settings.get("elevenlabs-for-foundry", "xi-api-key"),
+            'xi-api-key': game.settings.get("InworldIntegration", "xi-api-key"),
             'Content-Type': 'application/json'
         };
         const body = JSON.stringify({
@@ -234,35 +323,19 @@ class InworldIntegration {
                 if (done) break;
                 chunks.push(value);
             }
-            game.socket.emit('module.elevenlabs-for-foundry', {container: chunks});
+            game.socket.emit('module.InworldIntegration', {container: chunks});
             this.runPlaySound(chunks);
         } catch (error) {
             console.error('Error:', error);
         }
     }
 
+
     async runPlaySound(chunks) {
         let blob = new Blob(chunks, {type: 'audio/mpeg'});
         let url = window.URL.createObjectURL(blob);
         AudioHelper.play({src: url, volume: 1.0, loop: false}, false);
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     async onCreateChatMessage(chatMessage) {
         console.log('Chat message created:', chatMessage);  // Debugging line
@@ -275,21 +348,16 @@ class InworldIntegration {
 // Instantiate the class once
 const inworldIntegration = new InworldIntegration();
 
-//
-// BELOW THIS POINT THE CODE IS RELATED TO ELEVENLABS API - Something beyond this point is likely breaking the script.
-//
 
-
-
-var api_key = ""
-var all_Voices;
-var answer;
-var isKeyOwner = false;
-var allowKeySharing = false;
-var voiceID;
-var voiceText;
-var subscriptionInfo;
-var button;
+let api_key = ""
+let all_Voices;
+let answer;
+let isKeyOwner = false;
+let allowKeySharing = false;
+let voiceID;
+let voiceText;
+let subscriptionInfo;
+let button;
 
 
 Hooks.on('chatMessage', (log, message) => {
@@ -299,14 +367,15 @@ Hooks.on('chatMessage', (log, message) => {
     }
 })
 Hooks.on("ready", () => {
-    game.socket.on('module.elevenlabs-for-foundry', ({testarg, container}) => {
+    game.socket.on('module.InworldIntegration', ({testarg, container}) => {
         runPlaySound(container)
 
     })
+
 })
 
 async function Initialize_Main() {
-    api_key = game.settings.get("elevenlabs-for-foundry", "xi-api-key")
+    api_key = game.settings.get("InworldIntegration", "xi-api-key")
     if (api_key) {
         Get_Voices()
         Get_Userdata()
@@ -349,20 +418,54 @@ function Play_Sound(message) {
     }
 }
 
-
-
 async function Get_Voices() {
-    await fetch('https://api.elevenlabs.io/v1/voices', {
-        headers: {
-            'accept': 'application/json',
-            'xi-api-key': api_key
-        }
-    }).then(response => response.text()).then(text => all_Voices = JSON.parse(text))
+    try {
+        console.log('Sending request to fetch voices...');
+        const response = await fetch('https://api.elevenlabs.io/v1/voices', {
+            headers: {
+                'accept': 'application/json',
+                'xi-api-key': api_key
+            }
+        });
+        console.log('Response received:', response);
 
+        if (response.ok) {
+            const jsonData = await response.json();
+            console.log('JSON data parsed:', jsonData);
+            all_Voices = jsonData;
+            return jsonData.voices; // Return the voices array
+        } else {
+            console.error('Failed to get voices from ElevenLabs API:', response.statusText);
+            return []; // Return an empty array if the request fails
+        }
+    } catch (error) {
+        console.error('Error occurred while getting voices:', error);
+        return []; // Return an empty array in case of an error
+    }
 }
 
-async function Text_To_Speech(voiceID, text) {
-    let container = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voiceID, {
+async function textToSpeech(text) {
+    // Retrieve the voice name from settings
+    const voiceName = game.settings.get('InworldIntegration', 'elevenlabsVoice');
+    let voiceID;
+
+    // Assuming Get_Voices has already populated all_Voices
+    if (all_Voices && all_Voices.voices) {
+        const voiceData = all_Voices.voices.find(voice => voice.name === voiceName);
+        if (voiceData) {
+            voiceID = voiceData.voice_id;
+        } else {
+            console.error(`Voice ${voiceName} not found in the stored voices list.`);
+            return;
+        }
+    } else {
+        console.error('Voices list is not loaded. Make sure to run Get_Voices() first.');
+        return;
+    }
+
+    // Proceed with the Text-to-Speech request using the found voice ID
+    try {
+        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceID}`, {
             method: 'POST',
             headers: {
                 'accept': 'audio/mpeg',
@@ -373,19 +476,27 @@ async function Text_To_Speech(voiceID, text) {
                 "text": text,
                 "model_id": "eleven_monolingual_v1"
             })
+        });
+
+        // Handle response and play audio
+        if (response.ok) {
+            let reader = response.body.getReader();
+            let chunks = [];
+            while (true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                chunks.push(value);
+            }
+            game.socket.emit('module.InworldIntegration', {container: chunks});
+            let blob = new Blob(chunks, {type: 'audio/mpeg'});
+            let url = window.URL.createObjectURL(blob);
+            AudioHelper.play({src: url, volume: 1.0, loop: false}, false);
+        } else {
+            throw new Error(`HTTP Error Response: ${response.status} ${response.statusText}`);
         }
-    )
-    let reader = container.body.getReader()
-    let chunks = []
-    while (true) {
-        let {done, value} = await reader.read()
-        if (done) break
-        chunks.push(value)
+    } catch (error) {
+        console.error('Error in Text_To_Speech:', error);
     }
-    game.socket.emit('module.elevenlabs-for-foundry', {testarg: "Hello World", container: chunks})
-    let blob = new Blob(chunks, {type: 'audio/mpeg'})
-    let url = window.URL.createObjectURL(blob)
-    AudioHelper.play({src: url, volume: 1.0, loop: false}, false)
 }
 
 async function Voice_Field() {
@@ -455,7 +566,7 @@ async function Set_Key() {
 
 async function Set_Key_Window() {
     api_key = await Set_Key()
-    game.settings.set("elevenlabs-for-foundry", "xi-api-key", api_key)
+    game.settings.set("InworldIntegration", "xi-api-key", api_key)
     Get_Voices()
 }
 
