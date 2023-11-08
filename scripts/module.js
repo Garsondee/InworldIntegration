@@ -17,7 +17,7 @@ class inworldintegration {
             scope: 'world',
             config: true,
             type: String,
-            default: 'test-kpc1j',
+            default: '',
         });
 
         game.settings.register('inworldintegration', 'apiKey', {
@@ -28,6 +28,7 @@ class inworldintegration {
             type: String,
             default: '',
         });
+
 
         game.settings.register('inworldintegration', 'endUserId', {
             name: 'End User ID',
@@ -94,10 +95,8 @@ class inworldintegration {
             config: true,
             type: String,
             default: '',
-            choices: {}, // This will be populated dynamically
-            onChange: value => {
-                // Handle the change if needed
-            }
+            choices: {},
+            onChange: value => {}
         });
 
         async function populateVoiceDropdown() {
