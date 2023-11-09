@@ -264,7 +264,8 @@ class InworldIntegration {
                 token: token.id,
                 alias: token.document.name
             },
-            content: messages[index]
+            content: messages[index],
+            flags: { isFromAPI: true } // Add this flag
         };
 
         // Call the text-to-speech function
@@ -337,19 +338,38 @@ class InworldIntegration {
     }
 
     async onCreateChatMessage(chatMessage) {
-        // The new code snippet goes here
         console.log('Chat message created:', chatMessage);
-        if (chatMessage.speaker.actor) return;
-        const messageText = chatMessage.content;
 
-        // This checks if there's a controlled token with a matching actor id and sends the text
+        // Only proceed if the current user is the GM to avoid multiple requests from different users
+        if (!game.user.isGM) {
+            console.log('User is not GM, skipping processing.');
+            return;
+        }
+
+        // Check if the message is from the API to prevent an infinite loop
+        if (chatMessage.flags && chatMessage.flags.isFromAPI) {
+            console.log('Message is from the API, skipping processing.');
+            return;
+        }
+
+        // Extract the message text
+        const messageText = chatMessage.content;
+        console.log('Message text:', messageText);
+
+        // Check if the chat message has an associated actor and if there's a controlled token
         const actor = game.actors.get(chatMessage.speaker.actor);
         if (actor) {
             const tokens = actor.getActiveTokens();
             if (tokens.length && tokens[0].control) {
+                console.log('Sending text to Inworld API from token:', messageText);
                 await this.sendText(messageText, this.sessionData);
+                return; // Return after sending the message to avoid duplicate processing
             }
         }
+
+        // If the message does not have an associated actor or there are no controlled tokens, send the text to Inworld's API
+        console.log('Sending text to Inworld API from chat:', messageText);
+        await this.sendText(messageText, this.sessionData);
     }
 }
 
