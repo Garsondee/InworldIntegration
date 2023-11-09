@@ -1,4 +1,4 @@
-class inworldintegration {
+class InworldIntegration {
     constructor() {
         this.session_id = null;
         this.character_id = null;
@@ -337,15 +337,24 @@ class inworldintegration {
     }
 
     async onCreateChatMessage(chatMessage) {
-        console.log('Chat message created:', chatMessage);  // Debugging line
+        // The new code snippet goes here
+        console.log('Chat message created:', chatMessage);
         if (chatMessage.speaker.actor) return;
         const messageText = chatMessage.content;
-        await this.sendText(messageText, this.sessionData);
+
+        // This checks if there's a controlled token with a matching actor id and sends the text
+        const actor = game.actors.get(chatMessage.speaker.actor);
+        if (actor) {
+            const tokens = actor.getActiveTokens();
+            if (tokens.length && tokens[0].control) {
+                await this.sendText(messageText, this.sessionData);
+            }
+        }
     }
 }
 
 // Instantiate the class once
-const inworldintegration = new inworldintegration();
+const inworldIntegration = new InworldIntegration();
 
 
 let api_key = ""
