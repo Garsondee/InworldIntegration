@@ -265,7 +265,9 @@ class InworldIntegration {
                 alias: token.document.name
             },
             content: messages[index],
-            flags: { isFromAPI: true } // Add this flag
+            flags: {
+                inworldIntegration: true, // Add a custom flag to identify messages from Inworld
+            }
         };
 
         // Call the text-to-speech function
@@ -347,8 +349,15 @@ class InworldIntegration {
         }
 
         // Check if the message is from the API to prevent an infinite loop
-        if (chatMessage.flags && chatMessage.flags.isFromAPI) {
-            console.log('Message is from the API, skipping processing.');
+        if (chatMessage.flags && chatMessage.flags.inworldIntegration) {
+            console.log('Message is from Inworld Integration, skipping processing.');
+            return;
+        }
+
+        // Check if the message is non-conversational (e.g., dice roll, system message)
+        // Adjust the condition to include both IC and OOC messages
+        if (![CONST.CHAT_MESSAGE_TYPES.IC, CONST.CHAT_MESSAGE_TYPES.OOC].includes(chatMessage.type)) {
+            console.log('Non-conversational message, skipping processing.');
             return;
         }
 
